@@ -1,0 +1,167 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TutorFinder Pro</title>
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+</head>
+<body>
+
+    <div class="navbar">
+        <h1>TutorFinder</h1>
+        <p>Професійна платформа пошуку викладачів</p>
+    </div>
+
+    <div class="main-container">
+        
+        <div class="stats-panel">
+            <div class="stat-card">
+                <h4>150+</h4>
+                <p>Активних репетиторів</p>
+            </div>
+            <div class="stat-card">
+                <h4>3,500+</h4>
+                <p>Успішних учнів</p>
+            </div>
+            <div class="stat-card">
+                <h4>4.9</h4>
+                <p>Середній рейтинг</p>
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <label for="subject-filter">Дисципліна для навчання:</label>
+            <select id="subject-filter" onchange="filterTutors()">
+                <option value="">Всі доступні предмети</option>
+                <option value="Математика">Математика</option>
+                <option value="Англійська мова">Англійська мова</option>
+                <option value="Історія України">Історія України</option>
+                <option value="Фізика">Фізика</option>
+            </select>
+        </div>
+
+        <div class="cards-grid" id="tutors-container">
+            <!-- Картки додаються через JS -->
+        </div>
+
+        <div class="features-section">
+            <h2>Наші переваги</h2>
+            <div class="features-grid">
+                <div class="feature-item">
+                    <span class="feature-icon">🛡️</span>
+                    <h4>Перевірені анкети</h4>
+                    <p>Кожен викладач проходить ретельну перевірку дипломів та кваліфікації перед публікацією.</p>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">⚡</span>
+                    <h4>Швидкий старт</h4>
+                    <p>Обирайте предмет, записуйтесь на зручний час та починайте навчання вже сьогодні.</p>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">💰</span>
+                    <h4>Прозорі ціни</h4>
+                    <p>Жодних прихованих комісій. Ви платите виключно фіксовану вартість години заняття.</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="modal" id="bookingModal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeModal()">&times;</button>
+            <h2 id="modal-title">Онлайн-запис на урок</h2>
+            <form onsubmit="submitForm(event)">
+                <input type="text" placeholder="Ваше ім'я" required>
+                <input type="tel" placeholder="Номер телефону" required>
+                <input type="date" required>
+                <input type="time" required>
+                <button type="submit" class="action-btn" style="width: 100%;">Підтвердити запис</button>
+            </form>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 TutorFinder. Всі права захищені. Курсова робота з вебтехнологій.</p>
+    </footer>
+
+    <script>
+        async function loadTutors(subject = '') {
+            const container = document.getElementById('tutors-container');
+            container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-gray);">Завантаження профілів...</div>';
+
+            let url = '/api/tutors/';
+            if (subject) url += '?subject=' + encodeURIComponent(subject);
+
+            try {
+                const response = await fetch(url);
+                const tutors = await response.json();
+                container.innerHTML = '';
+
+                if (tutors.length === 0) {
+                    container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-gray);">Викладачів не знайдено.</div>';
+                    return;
+                }
+
+                tutors.forEach(tutor => {
+                    const firstLetter = tutor.name ? tutor.name.charAt(0) : 'Т';
+                    
+                    let subjectsHTML = '<div class="tutor-subjects">';
+                    tutor.subjects.forEach(sub => {
+                        subjectsHTML += `<span class="subject-tag">${sub}</span>`;
+                    });
+                    subjectsHTML += '</div>';
+
+                    const card = document.createElement('div');
+                    card.className = 'tutor-card';
+                    card.innerHTML = `
+                        <div class="profile-section">
+                            <div class="avatar">${firstLetter}</div>
+                            <div>
+                                <h3 class="tutor-name">${tutor.name}</h3>
+                            </div>
+                        </div>
+                        ${subjectsHTML}
+                        <div class="info-row"><strong>Освіта:</strong> ${tutor.education}</div>
+                        <div class="info-row"><strong>Досвід:</strong> ${tutor.experience} років</div>
+                        <p class="tutor-bio">"${tutor.bio}"</p>
+                        <div class="footer-section">
+                            <div class="price-box">
+                                <span class="price-lbl">Вартість</span>
+                                <span class="price-val">${tutor.price} грн/год</span>
+                            </div>
+                            <button class="action-btn" onclick="openModal('${tutor.name}')">Записатись</button>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            } catch (error) {
+                container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: red;">Помилка з\'єднання з сервером.</div>';
+            }
+        }
+
+        function filterTutors() {
+            loadTutors(document.getElementById('subject-filter').value);
+        }
+
+        function openModal(tutorName) {
+            document.getElementById('modal-title').innerText = `Запис до: ${tutorName}`;
+            document.getElementById('bookingModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('bookingModal').style.display = 'none';
+        }
+
+        function submitForm(event) {
+            event.preventDefault();
+            alert('Заявку успішно відправлено бекенд-серверу!');
+            closeModal();
+        }
+
+        loadTutors();
+    </script>
+</body>
+</html>
